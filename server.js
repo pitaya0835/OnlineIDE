@@ -46,6 +46,8 @@ function isExcelFile(f) {
 }
 
 function rowsToText(rows) {
+  // Sheets containing only a chart/image (no cells) come back with `data` undefined.
+  if (!Array.isArray(rows) || rows.length === 0) return '(表データなし)';
   return rows.map((row) => row.map((cell) => (cell == null ? '' : String(cell))).join('\t')).join('\n');
 }
 
