@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { GoogleGenAI } from '@google/genai';
+import readXlsxFile from 'read-excel-file/node';
 
 const PORT = process.env.PORT || 3000;
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
@@ -24,10 +25,40 @@ const AVAILABLE_MODELS = [
   { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (最新・バランス型)' },
   { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (最新・高性能)' },
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (最高精度・Preview)' },
+  { id: 'gemma-4-26b-a4b-it', label: 'Gemma 4 26B (オープンモデル)' },
+  { id: 'gemma-4-31b-it', label: 'Gemma 4 31B (オープンモデル)' },
 ];
 
 // Base64 inflates payload size by ~1/3, so this caps raw attachments around ~11MB total per request.
 const MAX_FILES_PER_MESSAGE = 5;
+
+// Gemini can't read Excel's binary format directly, so these are converted to text instead
+// of sent as inlineData. Detected by extension too since browsers often mislabel the mimeType.
+const EXCEL_MIME_TYPES = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/vnd.ms-excel', // .xls
+]);
+const EXCEL_EXTENSION = /\.xlsx?$/i;
+const MAX_SPREADSHEET_TEXT_LENGTH = 50000;
+
+function isExcelFile(f) {
+  return EXCEL_MIME_TYPES.has(f.mimeType) || (typeof f.name === 'string' && EXCEL_EXTENSION.test(f.name));
+}
+
+function rowsToText(rows) {
+  return rows.map((row) => row.map((cell) => (cell == null ? '' : String(cell))).join('\t')).join('\n');
+}
+
+async function excelFileToText(f) {
+  const buffer = Buffer.from(f.data, 'base64');
+  const sheets = await readXlsxFile(buffer);
+  const body = sheets.map(({ sheet, data }) => `--- Sheet: ${sheet} ---\n${rowsToText(data)}`).join('\n\n');
+  let text = `[Excelファイル: ${f.name || 'spreadsheet.xlsx'}]\n${body}`;
+  if (text.length > MAX_SPREADSHEET_TEXT_LENGTH) {
+    text = `${text.slice(0, MAX_SPREADSHEET_TEXT_LENGTH)}\n... (truncated)`;
+  }
+  return text;
+}
 
 const app = express();
 app.use(express.json({ limit: '15mb' }));
@@ -37,7 +68,7 @@ app.get('/api/models', (_req, res) => {
   res.json({ models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL });
 });
 
-// body: { messages: [{ role: 'user' | 'model', text: string, files?: [{ mimeType: string, data: string }] }], model?: string, systemInstruction?: string }
+// body: { messages: [{ role: 'user' | 'model', text: string, files?: [{ mimeType: string, data: string, name?: string }] }], model?: string, systemInstruction?: string }
 app.post('/api/chat', async (req, res) => {
   const { messages, model, systemInstruction } = req.body || {};
 
@@ -60,13 +91,29 @@ app.post('/api/chat', async (req, res) => {
     }
   }
 
-  const contents = messages.map((m) => ({
-    role: m.role,
-    parts: [
-      ...(m.files || []).map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })),
-      { text: m.text },
-    ],
-  }));
+  let contents;
+  try {
+    contents = await Promise.all(
+      messages.map(async (m) => {
+        const inlineParts = [];
+        const extraTexts = [];
+        for (const f of m.files || []) {
+          if (isExcelFile(f)) {
+            extraTexts.push(await excelFileToText(f));
+          } else {
+            inlineParts.push({ inlineData: { mimeType: f.mimeType, data: f.data } });
+          }
+        }
+        return {
+          role: m.role,
+          parts: [...inlineParts, { text: [m.text, ...extraTexts].filter(Boolean).join('\n\n') }],
+        };
+      })
+    );
+  } catch (err) {
+    console.error('Failed to parse attached Excel file:', err);
+    return res.status(400).json({ error: 'Excelファイルの読み込みに失敗しました。壊れていないか確認してください。' });
+  }
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');

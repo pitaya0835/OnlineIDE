@@ -8,7 +8,7 @@ const fileInput = document.getElementById('file-input');
 const attachBtn = document.getElementById('attach-btn');
 const attachmentPreviewEl = document.getElementById('attachment-preview');
 
-/** @type {{role: 'user'|'model', text: string, files?: {mimeType: string, data: string}[]}[]} */
+/** @type {{role: 'user'|'model', text: string, files?: {mimeType: string, data: string, name: string}[]}[]} */
 let history = [];
 let isStreaming = false;
 
@@ -158,7 +158,7 @@ formEl.addEventListener('submit', async (e) => {
   const text = inputEl.value.trim();
   if ((!text && pendingFiles.length === 0) || isStreaming) return;
 
-  const filesForHistory = pendingFiles.map((f) => ({ mimeType: f.mimeType, data: f.data }));
+  const filesForHistory = pendingFiles.map((f) => ({ mimeType: f.mimeType, data: f.data, name: f.name }));
   const attachmentsForDisplay = pendingFiles.map((f) => ({ name: f.name, mimeType: f.mimeType, dataUrl: f.dataUrl }));
 
   history.push({ role: 'user', text, ...(filesForHistory.length ? { files: filesForHistory } : {}) });
