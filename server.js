@@ -11,12 +11,19 @@ if (!API_KEY) {
   process.exit(1);
 }
 
+// Masked so the actual key is never printed; helps diagnose which key source
+// (.env vs an already-set shell/Codespaces env var, which dotenv never overrides) is active.
+console.log(`Using GEMINI_API_KEY: ${API_KEY.slice(0, 4)}...${API_KEY.slice(-4)} (length ${API_KEY.length})`);
+
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const AVAILABLE_MODELS = [
   { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (バランス型)' },
   { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (高精度)' },
   { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash-Lite (高速・低コスト)' },
+  { id: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (最新・バランス型)' },
+  { id: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (最新・高性能)' },
+  { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (最高精度・Preview)' },
 ];
 
 const app = express();
