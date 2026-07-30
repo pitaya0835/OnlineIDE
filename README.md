@@ -7,7 +7,18 @@ Google AI Studio (Gemini API) のモデルを使ったチャットシステム�
 - **バックエンド**: Node.js + Express。`@google/genai` SDK経由でGemini APIを呼び出し、レスポンスをSSE (Server-Sent Events) でストリーミングします。APIキーはサーバー側のみで扱い、フロントエンドには公開されません。
 - **フロントエンド**: `public/` 配下の素のHTML/CSS/JS。ビルド不要で、モデル選択・ストリーミング表示・会話履歴のクリアに対応したチャットUIです。
 
-## セットアップ
+## GitHub Codespacesで起動する
+
+このリポジトリには `.devcontainer/devcontainer.json` が含まれているため、GitHub上で「Code」→「Codespaces」→「Create codespace on main」を選ぶだけで起動できます。コンテナ作成時に `npm install` が自動実行されます。
+
+APIキーは以下のいずれかの方法で設定してください。
+
+- **推奨**: リポジトリの Settings → Secrets and variables → Codespaces で `GEMINI_API_KEY` を登録しておくと、Codespace起動時に環境変数として自動的に渡されます
+- もしくはCodespace内のターミナルで `cp .env.example .env` を実行し、`.env` に直接APIキーを記入
+
+起動後は Codespaces のターミナルで `npm start` を実行してください。ポート3000が自動的にフォワーディングされ、プレビューが開きます。
+
+## ローカルでのセットアップ
 
 1. 依存関係をインストール
 

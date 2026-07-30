@@ -1,0 +1,18 @@
+{
+  "name": "OnlineIDE Gemini Chat",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm install",
+  "postStartCommand": "echo 'Run: cp .env.example .env  (then set GEMINI_API_KEY) and npm start'",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Gemini Chat",
+      "onAutoForward": "openPreview"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  }
+}
