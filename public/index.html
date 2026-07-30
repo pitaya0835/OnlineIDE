@@ -19,7 +19,11 @@
 
     <main id="messages" class="messages" aria-live="polite"></main>
 
+    <div id="attachment-preview" class="attachment-preview"></div>
+
     <form id="chat-form" class="chat-form">
+      <input id="file-input" type="file" multiple hidden accept="image/*,application/pdf,text/plain,audio/*,video/*" />
+      <button id="attach-btn" type="button" title="ファイルを添付">📎</button>
       <textarea
         id="chat-input"
         placeholder="メッセージを入力... (Shift+Enterで改行、Enterで送信)"
