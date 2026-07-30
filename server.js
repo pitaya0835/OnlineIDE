@@ -26,15 +26,18 @@ const AVAILABLE_MODELS = [
   { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (最高精度・Preview)' },
 ];
 
+// Base64 inflates payload size by ~1/3, so this caps raw attachments around ~11MB total per request.
+const MAX_FILES_PER_MESSAGE = 5;
+
 const app = express();
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '15mb' }));
 app.use(express.static('public'));
 
 app.get('/api/models', (_req, res) => {
   res.json({ models: AVAILABLE_MODELS, defaultModel: DEFAULT_MODEL });
 });
 
-// body: { messages: [{ role: 'user' | 'model', text: string }], model?: string, systemInstruction?: string }
+// body: { messages: [{ role: 'user' | 'model', text: string, files?: [{ mimeType: string, data: string }] }], model?: string, systemInstruction?: string }
 app.post('/api/chat', async (req, res) => {
   const { messages, model, systemInstruction } = req.body || {};
 
@@ -45,11 +48,24 @@ app.post('/api/chat', async (req, res) => {
     if (!m || (m.role !== 'user' && m.role !== 'model') || typeof m.text !== 'string') {
       return res.status(400).json({ error: 'each message needs role "user"|"model" and a string text' });
     }
+    if (m.files !== undefined) {
+      if (!Array.isArray(m.files) || m.files.length > MAX_FILES_PER_MESSAGE) {
+        return res.status(400).json({ error: `files must be an array of at most ${MAX_FILES_PER_MESSAGE} items` });
+      }
+      for (const f of m.files) {
+        if (!f || typeof f.mimeType !== 'string' || typeof f.data !== 'string') {
+          return res.status(400).json({ error: 'each file needs a string mimeType and base64 data' });
+        }
+      }
+    }
   }
 
   const contents = messages.map((m) => ({
     role: m.role,
-    parts: [{ text: m.text }],
+    parts: [
+      ...(m.files || []).map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.data } })),
+      { text: m.text },
+    ],
   }));
 
   res.setHeader('Content-Type', 'text/event-stream');
