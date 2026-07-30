@@ -1,0 +1,16 @@
+{
+  "name": "onlineide-gemini-chat",
+  "version": "1.0.0",
+  "description": "Chat system powered by Google AI Studio (Gemini API) models",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2"
+  }
+}
